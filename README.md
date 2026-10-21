@@ -31,7 +31,8 @@ python -m pipeline.orchestrator examples/chained/training_round.toml
 ```
 
 `examples/chained/` contains full workflows, `examples/single_stage/` one config per stage; the two VASP stages share
-`vasp.toml`. Replace every `<...>` placeholder.
+`vasp.toml`. `examples/chained/production.toml` is the full pipeline with production settings. Replace every `<...>`
+placeholder.
 
 A single stage also runs without the orchestrator, in the current directory:
 
