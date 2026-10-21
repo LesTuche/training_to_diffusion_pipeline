@@ -15,7 +15,6 @@ ISMEAR = 0
 SIGMA = 0.05
 LCHARG = false
 LAECHG = false
-LHDF5 = false
 LREAL = "Auto"
 LASPH = true
 PREC = "Normal"
