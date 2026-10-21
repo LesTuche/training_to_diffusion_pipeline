@@ -1,0 +1,198 @@
+# Stages 08-10 use the model fine-tuned in stage 07 (run_production/07_finetune/<name>_compiled.model).
+# Latest production model: mh-1-fp32-v2-rng-42.
+run_dir = "run_production"
+
+[preset.mh1]
+model = "mh-1"
+head = "matpes_r2scan"
+device = "cuda"
+default_dtype = "float32"
+slurm = {}
+
+[preset.finetuned]
+model = "run_production/07_finetune/mh-1-finetuned_compiled.model"
+device = "cuda"
+default_dtype = "float32"
+slurm = { time = "120:00:00" }
+
+[preset.md]
+temperature_K = 873.0
+timestep_fs = 1.0
+taut_fs = 20.0
+log_interval_fs = 10.0
+
+[preset.vasp]
+potcars = { Pt = "Pt", Ga = "Ga_d", C = "C" }
+kpoints = { mesh = [1, 1, 1], gamma = true }
+ntasks = 20
+time = "48:00:00"
+
+[[stage]]
+module = "generate_cluster"
+name = "cluster_training"
+presets = ["mh1", "md"]
+radius = 7.0
+fmax = 0.1
+opt_max_steps = 200
+equilibration_nsteps = 2000
+write_interval_fs = 10.0
+
+[stage.clusters.pt36c5]
+composition = { Pt = 36, C = 5 }
+
+[stage.clusters.pt18ga18c5]
+composition = { Pt = 18, Ga = 18, C = 5 }
+
+[[stage]]
+module = "run_md"
+name = "data_gen_opes"
+presets = ["mh1", "md"]
+plumed = { pt36c5 = "<path/to/examples/plumed/alpha_ptc_data_gen.dat>", pt18ga18c5 = "<path/to/examples/plumed/alpha_ptga_dop_data_gen.dat>" }
+nsteps = 100000
+write_interval_fs = 50.0
+
+[[stage]]
+module = "run_md"
+name = "data_gen_md"
+presets = ["mh1", "md"]
+inputs = ["cluster_training"]
+nsteps = 100000
+write_interval_fs = 50.0
+
+[[stage]]
+module = "select_frames"
+name = "selection"
+presets = ["mh1"]
+inputs = ["data_gen_opes", "data_gen_md"]
+frames_per_traj = 300
+val_fraction = 0.2
+
+[[stage]]
+module = "relax_mlip"
+name = "relax_mlip"
+presets = ["mh1"]
+fmax = 0.05
+opt_max_steps = 500
+
+[[stage]]
+module = "relax_vasp"
+name = "relax_vasp"
+presets = ["vasp"]
+
+[stage.incar]
+IBRION = 2
+NSW = 200
+POTIM = 0.1
+ISIF = 2
+EDIFFG = -0.01
+METAGGA = "r2scan"
+ENCUT = 450
+PREC = "Accurate"
+EDIFF = 1e-05
+ISMEAR = 0
+SIGMA = 0.05
+ALGO = "Normal"
+ISPIN = 1
+LASPH = true
+LREAL = "Auto"
+LWAVE = false
+LCHARG = false
+KPAR = 1
+
+[[stage]]
+module = "label_vasp"
+name = "labels"
+presets = ["vasp"]
+
+[stage.incar]
+IBRION = 0
+NSW = 0
+EDIFF = 1e-05
+NELM = 300
+METAGGA = "r2scan"
+ENCUT = 680
+ENAUG = 1360
+ISPIN = 1
+ISMEAR = 0
+SIGMA = 0.05
+LCHARG = false
+LAECHG = false
+LREAL = false
+LASPH = true
+PREC = "Accurate"
+LWAVE = false
+KPAR = 1
+ALGO = "All"
+LMAXMIX = 6
+LMIXTAU = true
+
+[[stage]]
+module = "finetune_mace"
+name = "finetune"
+device = "cuda"
+slurm = { cpus_per_task = 8, mem_per_cpu = "10000M", time = "72:00:00", gpu_class = "a100-pcie-40gb" }
+
+[stage.mace_args]
+name = "mh-1-finetuned"
+foundation_model = "mh-1"
+foundation_head = "matpes_r2scan"
+multiheads_finetuning = "True"
+foundation_model_elements = "True"
+pt_train_file = "matpes_r2scan"
+num_samples_pt = 20000
+filter_type_pt = "combinations"
+subselect_pt = "fps"
+weight_pt_head = 1
+atomic_numbers = "[1,5,6,8,13,14,28,31,32,46,49,50,78,81,82]"
+energy_key = "dft_energy"
+forces_key = "dft_forces"
+energy_weight = 1.0
+forces_weight = 100.0
+seed = 42
+max_num_epochs = 100
+patience = 15
+scheduler_patience = 5
+batch_size = 6
+valid_batch_size = 6
+num_workers = 8
+E0s = "foundation"
+default_dtype = "float32"
+restart_latest = true
+
+# [[stage]]
+# module = "generate_cluster"
+# name = "cluster"
+# presets = ["finetuned", "md"]
+# radius = 7.0
+# fmax = 0.1
+# opt_max_steps = 200
+# equilibration_nsteps = 22000
+# write_interval_fs = 10.0
+#
+# [stage.clusters.pt36c5]
+# composition = { Pt = 36, C = 5 }
+#
+# [stage.clusters.pt18ga18c5]
+# composition = { Pt = 18, Ga = 18, C = 5 }
+
+[[stage]]
+module = "run_md"
+name = "opes"
+presets = ["finetuned", "md"]
+inputs = ["data_gen_md"]
+plumed = { pt36c5 = "<path/to/examples/plumed/alpha_ptc.dat>", pt18ga18c5 = "<path/to/examples/plumed/alpha_ptga_dop.dat>" }
+nsteps = 3000000
+write_interval_fs = 100.0
+
+[[stage]]
+module = "opes_minimum"
+name = "opes_minimum"
+temperature_K = 873.0
+colvar_stride = 10
+
+[[stage]]
+module = "run_md"
+name = "diffusion"
+presets = ["finetuned", "md"]
+nsteps = 2500000
+write_interval_fs = 10.0
