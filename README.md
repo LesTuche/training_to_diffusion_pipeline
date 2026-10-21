@@ -278,3 +278,7 @@ Both are plotted against C per metal atom: C / Pt for Pt clusters, C / (Pt+Ga) f
 | `coordination_files` | `{}`    | `{system = npz path}` for coordination files that are not stage inputs |
 
 The `__main__` block of `pipeline/plot_structure.py` makes these plots without the orchestrator.
+
+## Acknowledgements
+
+Developed with the help of Claude Opus 5.5.
