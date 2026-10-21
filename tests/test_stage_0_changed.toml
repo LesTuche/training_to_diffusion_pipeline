@@ -1,0 +1,19 @@
+run_dir = "run_skip"
+
+[preset.md]
+model = "<path/to/compiled.model>"
+device = "cpu"
+default_dtype = "float32"
+temperature_K = 873.0
+timestep_fs = 1.0
+taut_fs = 20.0
+write_interval_fs = 10.0
+log_interval_fs = 10.0
+
+[[stage]]
+module = "run_md"
+name = "equilibration"
+presets = ["md"]
+inputs = ["pt36c1_start.traj"]
+seed = 1
+nsteps = 1

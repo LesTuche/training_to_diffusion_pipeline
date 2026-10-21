@@ -1,0 +1,121 @@
+run_dir = "run_training_round"
+
+[preset.mace]
+model = "mh-1"
+head = "matpes_r2scan"
+device = "cuda"
+default_dtype = "float32"
+slurm = {}
+
+[preset.md]
+temperature_K = 873.0
+timestep_fs = 1.0
+taut_fs = 20.0
+write_interval_fs = 10.0
+log_interval_fs = 10.0
+slurm = { time = "72:00:00" }
+
+[preset.vasp]
+potcars = { Pt = "Pt", Ga = "Ga_d", C = "C" }
+ntasks = 20
+time = "24:00:00"
+
+[preset.vasp.incar]
+EDIFF = 1e-03
+NELM = 300
+GGA = "PE"
+ENCUT = 300
+ISPIN = 1
+ISMEAR = 0
+SIGMA = 0.05
+LCHARG = false
+LAECHG = false
+LHDF5 = false
+LREAL = "Auto"
+LASPH = true
+PREC = "Normal"
+LWAVE = false
+KPAR = 1
+ALGO = "Fast"
+KSPACING = 0.7
+
+[[stage]]
+module = "generate_cluster"
+name = "cluster"
+presets = ["mace", "md"]
+radius = 8.0
+seed = 42
+fmax = 0.1
+opt_max_steps = 200
+equilibration_nsteps = 2000
+
+[stage.clusters.pt36c1]
+composition = { Pt = 36, C = 1 }
+
+[stage.clusters.pt18ga18c5]
+composition = { Pt = 18, Ga = 18, C = 5 }
+
+[[stage]]
+module = "run_md"
+name = "data_gen"
+presets = ["mace", "md"]
+nsteps = 2000
+seed = 2
+
+[[stage]]
+module = "select_frames"
+name = "selection"
+presets = ["mace"]
+frames_per_traj = 2
+val_fraction = 0.5
+
+[[stage]]
+module = "relax_mlip"
+name = "relax_mlip"
+presets = ["mace"]
+fmax = 0.5
+opt_max_steps = 20
+
+[[stage]]
+module = "relax_vasp"
+name = "relax_vasp"
+presets = ["vasp"]
+incar = { IBRION = 2, ISIF = 2, POTIM = 0.1, NSW = 3, EDIFFG = -0.5 }
+
+[[stage]]
+module = "label_vasp"
+name = "labels"
+presets = ["vasp"]
+incar = { IBRION = 0, NSW = 0 }
+
+[[stage]]
+module = "finetune_mace"
+name = "finetune"
+device = "cuda"
+slurm = { cpus_per_task = 8, mem_per_cpu = "10000M", time = "72:00:00" }
+
+[stage.mace_args]
+name = "mh-1-finetuned"
+foundation_model = "mh-1"
+foundation_head = "matpes_r2scan"
+multiheads_finetuning = "True"
+foundation_model_elements = "True"
+pt_train_file = "matpes_r2scan"
+num_samples_pt = 20000
+filter_type_pt = "combinations"
+subselect_pt = "fps"
+energy_key = "dft_energy"
+forces_key = "dft_forces"
+energy_weight = 1.0
+forces_weight = 100.0
+weight_pt_head = 1
+seed = 42
+max_num_epochs = 100
+patience = 15
+scheduler_patience = 5
+batch_size = 6
+valid_batch_size = 6
+num_workers = 8
+E0s = "foundation"
+default_dtype = "float32"
+restart_latest = true

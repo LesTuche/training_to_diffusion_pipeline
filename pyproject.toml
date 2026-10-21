@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "training_to_diffusion_pipeline"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = [
+    "ase<=3.30.0b1",
+    "mace-torch",
+    "torch",
+    "torch_geometric",
+    "numpy",
+    "scipy",
+    "pandas",
+    "matplotlib",
+    "tidynamics",
+    "tqdm",
+    "packaging",
+    "plumed",
+]
+
+[project.optional-dependencies]
+test = ["pytest"]
+
+[tool.setuptools]
+packages = ["pipeline"]

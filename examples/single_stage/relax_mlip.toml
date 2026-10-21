@@ -1,0 +1,13 @@
+run_dir = "run_relax_mlip"
+
+[[stage]]
+module = "relax_mlip"
+name = "relax_mlip"
+inputs = ["<path/to/selection_train.traj>", "<path/to/selection_val.traj>"]
+model = "mh-1"
+head = "matpes_r2scan"
+device = "cuda"
+default_dtype = "float32"
+slurm = {}
+fmax = 0.5
+opt_max_steps = 20

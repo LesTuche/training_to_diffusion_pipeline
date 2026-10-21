@@ -1,0 +1,38 @@
+run_dir = "run_vasp"
+
+[preset.vasp]
+potcars = { Pt = "Pt", Ga = "Ga_d", C = "C" }
+ntasks = 20
+time = "24:00:00"
+
+[preset.vasp.incar]
+EDIFF = 1e-03
+NELM = 300
+GGA = "PE"
+ENCUT = 300
+ISPIN = 1
+ISMEAR = 0
+SIGMA = 0.05
+LCHARG = false
+LAECHG = false
+LHDF5 = false
+LREAL = "Auto"
+LASPH = true
+PREC = "Normal"
+LWAVE = false
+KPAR = 1
+ALGO = "Fast"
+KSPACING = 0.7
+
+[[stage]]
+module = "relax_vasp"
+name = "relax_vasp"
+presets = ["vasp"]
+inputs = ["<path/to/frames_train.traj>", "<path/to/frames_val.traj>"]
+incar = { IBRION = 2, ISIF = 2, POTIM = 0.1, NSW = 3, EDIFFG = -0.5 }
+
+[[stage]]
+module = "label_vasp"
+name = "labels"
+presets = ["vasp"]
+incar = { IBRION = 0, NSW = 0 }

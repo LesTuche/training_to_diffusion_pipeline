@@ -1,0 +1,8 @@
+[[stage]]
+module = "select_frames"
+name = "selection"
+model = "<path/to/non_compiled.model>"
+device = "cpu"
+default_dtype = "float32"
+thin_to = 200
+frames_per_traj = 5

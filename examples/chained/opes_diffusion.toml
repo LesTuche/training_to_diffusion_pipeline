@@ -1,0 +1,66 @@
+run_dir = "run_opes_diffusion"
+
+[preset.mace]
+model = "mh-1"
+head = "matpes_r2scan"
+device = "cuda"
+default_dtype = "float32"
+slurm = {}
+
+[preset.md]
+temperature_K = 873.0
+timestep_fs = 1.0
+taut_fs = 20.0
+log_interval_fs = 10.0
+slurm = { time = "04:00:00" }
+
+[[stage]]
+module = "run_md"
+name = "opes"
+presets = ["mace", "md"]
+inputs = ["<path/to/start_structure.traj>"]
+plumed = "<path/to/examples/plumed/alpha_ptc.dat>"
+nsteps = 50000
+write_interval_fs = 100.0
+seed = 5
+
+[[stage]]
+module = "opes_minimum"
+name = "opes_minimum"
+temperature_K = 873.0
+colvar_stride = 10
+
+[[stage]]
+module = "run_md"
+name = "diffusion"
+presets = ["mace", "md"]
+nsteps = 105000
+write_interval_fs = 10.0
+seed = 6
+
+[[stage]]
+module = "analyze_diffusion"
+name = "analysis"
+write_interval_fs = 10.0
+equilibration_ps = 5.0
+cache_dir = "<path/to/analysis_cache>"
+species.C = { vacf_cutoff_ps = 2.0, vacf_epsilon = 0.05, n_samples_per_block = 25, fit_start_ps = 4.0, fit_width_ps = 3.0 }
+species.Pt = { vacf_cutoff_ps = 2.0, vacf_epsilon = 0.05, n_samples_per_block = 25, fit_start_ps = 5.0, fit_width_ps = 4.0 }
+
+[[stage]]
+module = "analyze_coordination"
+name = "coordination"
+inputs = ["diffusion"]
+write_interval_fs = 10.0
+equilibration_ps = 5.0
+cache_dir = "<path/to/analysis_cache>"
+
+[[stage]]
+module = "plot_diffusion"
+name = "diffusion_plots"
+inputs = ["analysis", "coordination"]
+
+[[stage]]
+module = "plot_structure"
+name = "structure_plots"
+inputs = ["coordination"]

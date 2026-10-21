@@ -1,0 +1,19 @@
+run_dir = "run_md"
+
+[[stage]]
+module = "run_md"
+name = "md"
+inputs = ["<path/to/structure_a.traj>", "<path/to/structure_b.traj>"]
+model = "mh-1"
+head = "matpes_r2scan"
+device = "cuda"
+default_dtype = "float32"
+slurm = { time = "72:00:00" }
+temperature_K = 873.0
+timestep_fs = 1.0
+taut_fs = 20.0
+nsteps = 2000
+write_interval_fs = 10.0
+log_interval_fs = 10.0
+seed = 2
+plumed = { structure_a = "<path/to/examples/plumed/alpha_ptc.dat>", structure_b = "<path/to/examples/plumed/alpha_ptga_dop.dat>" }

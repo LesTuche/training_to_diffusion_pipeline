@@ -1,0 +1,14 @@
+run_dir = "run_plot_diffusion"
+
+[[stage]]
+module = "plot_diffusion"
+name = "plots"
+inputs = ["<path/to/pt36_diffusion.csv>", "<path/to/pt36c1_diffusion.csv>", "<path/to/coordination_pt36c1.npz>"]
+regimes = { pt36c1 = { surface = [1, 3], core = [2] } }
+trend_regimes = { pt36c1 = "surface" }
+highlights = [
+    { name = "pt36_pt", group = "pt", systems = ["pt36", "pt36c1_surface", "pt36c1_core", "pt36c1"], elements = ["Pt"] },
+]
+
+[stage.coordination_files]
+pt36 = "<path/to/pt36_coordination.npz>"

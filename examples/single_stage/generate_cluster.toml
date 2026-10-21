@@ -1,0 +1,26 @@
+run_dir = "run_generate_cluster"
+
+[[stage]]
+module = "generate_cluster"
+name = "cluster"
+model = "mh-1"
+head = "matpes_r2scan"
+device = "cuda"
+default_dtype = "float32"
+slurm = {}
+radius = 8.0
+seed = 42
+fmax = 0.1
+opt_max_steps = 200
+temperature_K = 873.0
+timestep_fs = 1.0
+taut_fs = 20.0
+equilibration_nsteps = 2000
+write_interval_fs = 10.0
+log_interval_fs = 10.0
+
+[stage.clusters.pt36c1]
+composition = { Pt = 36, C = 1 }
+
+[stage.clusters.pt18ga18c5]
+composition = { Pt = 18, Ga = 18, C = 5 }

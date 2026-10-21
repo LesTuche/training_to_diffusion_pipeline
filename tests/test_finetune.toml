@@ -1,0 +1,23 @@
+run_dir = "run_finetune"
+
+[[stage]]
+module = "finetune_mace"
+name = "finetune"
+inputs = ["data_train.extxyz", "data_val.extxyz"]
+device = "cpu"
+
+[stage.mace_args]
+name = "tiny"
+model = "MACE"
+num_channels = 8
+max_L = 0
+r_max = 4.0
+E0s = "average"
+energy_key = "dft_energy"
+forces_key = "dft_forces"
+max_num_epochs = 1
+batch_size = 2
+valid_batch_size = 2
+default_dtype = "float32"
+seed = 1
+restart_latest = true

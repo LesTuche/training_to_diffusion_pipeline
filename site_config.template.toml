@@ -1,0 +1,15 @@
+# Copy this file to site_config.toml (same directory) and adapt every value to your machine before running the pipeline.
+# site_config.toml is read by every pipeline run and is not tracked by git.
+
+# Shell lines run at the start of every SLURM job, before the stage command: load the VASP modules, activate the
+# Python environment with mace-torch and ase, set PLUMED_KERNEL.
+job_setup = [
+    "module load <modules that provide the VASP executables>",
+    "source <path/to/venv>/bin/activate",
+    "export PLUMED_KERNEL=<path/to/libplumedKernel.so>",
+]
+
+[vasp]
+potcar_dir = "<path/to/potpaw_PBE>"
+gamma_executable = "vasp_gam"
+std_executable = "vasp_std"

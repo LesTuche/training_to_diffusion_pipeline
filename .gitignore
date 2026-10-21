@@ -1,0 +1,6 @@
+__pycache__/
+.pytest_cache/
+run_*/
+site_config.toml
+*.egg-info/
+tests/fixtures/diffusion/

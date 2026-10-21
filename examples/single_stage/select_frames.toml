@@ -1,0 +1,13 @@
+run_dir = "run_select_frames"
+
+[[stage]]
+module = "select_frames"
+name = "selection"
+inputs = ["<path/to/trajectory_a.traj>", "<path/to/trajectory_b.traj>"]
+model = "mh-1"
+head = "matpes_r2scan"
+device = "cuda"
+default_dtype = "float32"
+slurm = {}
+frames_per_traj = 2
+val_fraction = 0.5

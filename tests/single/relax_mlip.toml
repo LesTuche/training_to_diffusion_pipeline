@@ -1,0 +1,8 @@
+[[stage]]
+module = "relax_mlip"
+name = "relax"
+model = "<path/to/non_compiled.model>"
+device = "cpu"
+default_dtype = "float32"
+fmax = 0.5
+opt_max_steps = 2

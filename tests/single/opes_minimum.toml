@@ -1,0 +1,5 @@
+[[stage]]
+module = "opes_minimum"
+name = "opes_minimum"
+temperature_K = 873.0
+colvar_stride = 1

@@ -1,0 +1,34 @@
+run_dir = "run_finetune_mace"
+
+[[stage]]
+module = "finetune_mace"
+name = "finetune"
+inputs = ["<path/to/labels_train.xyz>", "<path/to/labels_val.xyz>"]
+device = "cuda"
+slurm = { cpus_per_task = 8, mem_per_cpu = "10000M", time = "72:00:00" }
+
+[stage.mace_args]
+name = "mh-1-finetuned"
+foundation_model = "mh-1"
+foundation_head = "matpes_r2scan"
+multiheads_finetuning = "True"
+foundation_model_elements = "True"
+pt_train_file = "matpes_r2scan"
+num_samples_pt = 20000
+filter_type_pt = "combinations"
+subselect_pt = "fps"
+energy_key = "dft_energy"
+forces_key = "dft_forces"
+energy_weight = 1.0
+forces_weight = 100.0
+weight_pt_head = 1
+seed = 42
+max_num_epochs = 100
+patience = 15
+scheduler_patience = 5
+batch_size = 6
+valid_batch_size = 6
+num_workers = 8
+E0s = "foundation"
+default_dtype = "float32"
+restart_latest = true
