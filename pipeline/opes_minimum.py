@@ -17,7 +17,7 @@ DEFAULTS = {
     "fes_bins": None,
 }
 
-FES_SCRIPT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "FES_from_State.py")
+FES_SCRIPT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "third_party", "FES_from_State.py")
 
 
 def read_plumed_table(path):

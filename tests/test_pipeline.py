@@ -6,6 +6,7 @@ import sys
 from pathlib import Path
 
 import numpy as np
+import pytest
 from ase.io import read, write
 
 HERE = Path(__file__).parent
@@ -192,11 +193,8 @@ def test_plumed_input(tmp_path):
     atoms = Atoms("PtCPt", positions=np.zeros((3, 3)))
     assert run_md.plumed_input_lines(template, atoms) == ["UNITS LENGTH=A ENERGY=eV TIME=fs", "c: COORDINATION GROUPA=1,3 GROUPB=2 R_0=2.7"]
     template.write_text("c: COORDINATION GROUPA=@Ga@ GROUPB=@C@ R_0=2.7\n")
-    try:
+    with pytest.raises(ValueError, match="placeholder @Ga@"):
         run_md.plumed_input_lines(template, atoms)
-        raise AssertionError("missing element accepted")
-    except ValueError as error:
-        assert "placeholder @Ga@" in str(error)
     stage_items = run_md.items({"name": "opes", "plumed": {"pt36c1": "ptc.dat", "pt18ga18c5": "ptgac.dat"}}, ["a/pt36c1.traj", "b/pt18ga18c5.traj"])
     assert [(label, item["plumed"]) for label, item, _ in stage_items] == [("pt36c1", "ptc.dat"), ("pt18ga18c5", "ptgac.dat")]
 
