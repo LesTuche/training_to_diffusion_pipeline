@@ -17,7 +17,8 @@ DEFAULTS = {
     "fes_bins": None,
 }
 
-FES_SCRIPT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "third_party", "FES_from_State.py")
+FES_SCRIPT = os.path.join(os.path.dirname(
+    os.path.abspath(__file__)), "third_party", "FES_from_State.py")
 
 
 def read_plumed_table(path):
@@ -26,10 +27,12 @@ def read_plumed_table(path):
     Returns (column names, (n_rows, n_columns) array); raises if the column count does not match FIELDS.
     """
     with open(path) as input_file:
-        column_names = next(line.split()[2:] for line in input_file if line.startswith("#! FIELDS"))
+        column_names = next(
+            line.split()[2:] for line in input_file if line.startswith("#! FIELDS"))
     table_values = np.loadtxt(path, comments="#", ndmin=2)
     if table_values.shape[1] != len(column_names):
-        raise ValueError(f"{path}: {table_values.shape[1]} columns but FIELDS lists {len(column_names)}")
+        raise ValueError(
+            f"{path}: {table_values.shape[1]} columns but FIELDS lists {len(column_names)}")
     return column_names, table_values
 
 
@@ -43,8 +46,10 @@ def run(settings, output_dir, inputs, mace_calculator):
     Returns [<output_dir>/<name>.traj]; also writes <name>_fes.dat.
     """
     if len(inputs) != 1:
-        raise ValueError(f"opes_minimum needs exactly one trajectory, got {inputs}")
-    merged_settings, output_prefix = write_merged_settings(sys.modules[__name__], settings, output_dir, inputs)
+        raise ValueError(
+            f"opes_minimum needs exactly one trajectory, got {inputs}")
+    merged_settings, output_prefix = write_merged_settings(
+        sys.modules[__name__], settings, output_dir, inputs)
     opes_run_dir = os.path.dirname(inputs[0])
 
     fes_file = f"{output_prefix}_fes.dat"
@@ -60,18 +65,21 @@ def run(settings, output_dir, inputs, mace_calculator):
     cv_names = fes_column_names[:-1]
     fes_minimum_cv_values = fes_table[np.argmin(fes_table[:, -1]), :-1]
 
-    colvar_column_names, colvar_table = read_plumed_table(os.path.join(opes_run_dir, merged_settings["colvar_file"]))
+    colvar_column_names, colvar_table = read_plumed_table(
+        os.path.join(opes_run_dir, merged_settings["colvar_file"]))
     cvs_missing_in_colvar = set(cv_names) - set(colvar_column_names)
     if cvs_missing_in_colvar:
         raise ValueError(f"CVs {sorted(cvs_missing_in_colvar)} of the FES are not in {merged_settings['colvar_file']} "
                          f"fields {colvar_column_names}")
-    cv_values_per_frame = colvar_table[::merged_settings["colvar_stride"], [colvar_column_names.index(cv_name) for cv_name in cv_names]]
+    cv_values_per_frame = colvar_table[::merged_settings["colvar_stride"], [
+        colvar_column_names.index(cv_name) for cv_name in cv_names]]
 
     opes_trajectory = Trajectory(inputs[0])
     if len(cv_values_per_frame) != len(opes_trajectory):
         raise ValueError(f"{len(colvar_table)} COLVAR rows with colvar_stride {merged_settings['colvar_stride']} give "
                          f"{len(cv_values_per_frame)} frames, but {inputs[0]} has {len(opes_trajectory)}")
-    cv_distance_to_minimum = np.linalg.norm(cv_values_per_frame - fes_minimum_cv_values, axis=1)
+    cv_distance_to_minimum = np.linalg.norm(
+        cv_values_per_frame - fes_minimum_cv_values, axis=1)
     closest_frame_index = int(np.argmin(cv_distance_to_minimum))
     closest_frame = opes_trajectory[closest_frame_index]
     opes_trajectory.close()
@@ -86,5 +94,6 @@ def run(settings, output_dir, inputs, mace_calculator):
 
 
 if __name__ == "__main__":
-    settings, inputs = standalone_settings(sys.argv[1], "opes_minimum", sys.argv[2:])
+    settings, inputs = standalone_settings(
+        sys.argv[1], "opes_minimum", sys.argv[2:])
     run(settings, ".", inputs, None)

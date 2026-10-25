@@ -29,8 +29,10 @@ def thin_trajectory(trajectory_path, thin_to):
     """
     trajectory = Trajectory(trajectory_path)
     thinning_stride = max(1, len(trajectory) // thin_to)
-    kept_frame_indices = list(range(0, len(trajectory), thinning_stride))[:thin_to]
-    kept_frames = [trajectory[frame_index] for frame_index in kept_frame_indices]
+    kept_frame_indices = list(
+        range(0, len(trajectory), thinning_stride))[:thin_to]
+    kept_frames = [trajectory[frame_index]
+                   for frame_index in kept_frame_indices]
     trajectory.close()
     return kept_frame_indices, kept_frames
 
@@ -46,9 +48,12 @@ def evaluate_with_mace(frames, mace_calculator):
         # copy() drops the calculator with the stored MD results, so the stage's model is evaluated
         frame_with_calculator = frame.copy()
         frame_with_calculator.calc = mace_calculator
-        energies_per_atom.append(frame_with_calculator.get_potential_energy() / len(frame_with_calculator))
-        max_forces.append(np.linalg.norm(frame_with_calculator.get_forces(), axis=1).max())
-        atom_descriptors_per_frame.append(mace_calculator.get_descriptors(frame).astype(np.float32))
+        energies_per_atom.append(
+            frame_with_calculator.get_potential_energy() / len(frame_with_calculator))
+        max_forces.append(np.linalg.norm(
+            frame_with_calculator.get_forces(), axis=1).max())
+        atom_descriptors_per_frame.append(
+            mace_calculator.get_descriptors(frame).astype(np.float32))
     return energies_per_atom, max_forces, atom_descriptors_per_frame
 
 
@@ -59,9 +64,12 @@ def pick_frames_by_fps(atom_descriptors_per_frame, n_frames, atoms_per_frame_fac
     Returns {frame index: index of the atom whose pick selected the frame}, in FPS order.
     """
     stacked_atom_descriptors = np.vstack(atom_descriptors_per_frame)
-    frame_index_of_row = np.repeat(np.arange(len(atom_descriptors_per_frame)), [len(descriptors) for descriptors in atom_descriptors_per_frame])
-    atom_index_of_row = np.concatenate([np.arange(len(descriptors)) for descriptors in atom_descriptors_per_frame])
-    n_atoms_to_sample = min(atoms_per_frame_factor * n_frames, len(stacked_atom_descriptors))
+    frame_index_of_row = np.repeat(np.arange(len(atom_descriptors_per_frame)), [
+                                   len(descriptors) for descriptors in atom_descriptors_per_frame])
+    atom_index_of_row = np.concatenate(
+        [np.arange(len(descriptors)) for descriptors in atom_descriptors_per_frame])
+    n_atoms_to_sample = min(atoms_per_frame_factor *
+                            n_frames, len(stacked_atom_descriptors))
     descriptor_tensor = torch.tensor(stacked_atom_descriptors, device=device)
     picked_atom_by_frame = {}
     # deterministic start at the first atom
@@ -81,29 +89,36 @@ def run(settings, output_dir, inputs, mace_calculator):
     Frames listed in exclude_provenance, the provenance CSV of an earlier selection, are not picked again.
     Returns [<name>_train.traj, <name>_val.traj]; also writes <name>_provenance.csv.
     """
-    merged_settings, output_prefix = write_merged_settings(sys.modules[__name__], settings, output_dir, inputs)
+    merged_settings, output_prefix = write_merged_settings(
+        sys.modules[__name__], settings, output_dir, inputs)
 
     excluded_trajectory_frames = set()
     if merged_settings["exclude_provenance"] is not None:
-        previous_provenance = pd.read_csv(merged_settings["exclude_provenance"])
-        excluded_trajectory_frames = set(zip(previous_provenance["traj_file"], previous_provenance["orig_index"]))
+        previous_provenance = pd.read_csv(
+            merged_settings["exclude_provenance"])
+        excluded_trajectory_frames = set(
+            zip(previous_provenance["traj_file"], previous_provenance["orig_index"]))
 
     selected_frames, provenance_records = [], []
     for trajectory_path in inputs:
-        thinned_indices, thinned_frames = thin_trajectory(trajectory_path, merged_settings["thin_to"])
-        energies_per_atom, max_forces, atom_descriptors_per_frame = evaluate_with_mace(thinned_frames, mace_calculator)
+        thinned_indices, thinned_frames = thin_trajectory(
+            trajectory_path, merged_settings["thin_to"])
+        energies_per_atom, max_forces, atom_descriptors_per_frame = evaluate_with_mace(
+            thinned_frames, mace_calculator)
         excluded_frame_indices = {frame_index for frame_index, original_index in enumerate(thinned_indices)
                                   if (trajectory_path, original_index) in excluded_trajectory_frames}
         picked_atom_by_frame = pick_frames_by_fps(atom_descriptors_per_frame, merged_settings["frames_per_traj"],
                                                   merged_settings["atoms_per_frame_factor"], merged_settings["device"], excluded_frame_indices)
         if len(picked_atom_by_frame) < merged_settings["frames_per_traj"]:
-            print(f"{trajectory_path}: only {len(picked_atom_by_frame)} of {merged_settings['frames_per_traj']} frames selected", flush=True)
+            print(
+                f"{trajectory_path}: only {len(picked_atom_by_frame)} of {merged_settings['frames_per_traj']} frames selected", flush=True)
         for frame_index, atom_index in picked_atom_by_frame.items():
             selected_frames.append(thinned_frames[frame_index])
             provenance_records.append({"traj_file": trajectory_path, "orig_index": thinned_indices[frame_index], "atom_index": atom_index,
                                        "energy_per_atom": energies_per_atom[frame_index], "max_force": max_forces[frame_index]})
 
-    shuffled_order = np.random.default_rng(merged_settings["seed"]).permutation(len(selected_frames))
+    shuffled_order = np.random.default_rng(
+        merged_settings["seed"]).permutation(len(selected_frames))
     n_val = int(len(shuffled_order) * merged_settings["val_fraction"])
     val_positions, train_positions = shuffled_order[:n_val], shuffled_order[n_val:]
     for position in val_positions:
@@ -111,18 +126,22 @@ def run(settings, output_dir, inputs, mace_calculator):
     for position in train_positions:
         provenance_records[position]["split"] = "train"
 
-    write(f"{output_prefix}_train.traj", [selected_frames[position] for position in train_positions])
-    write(f"{output_prefix}_val.traj", [selected_frames[position] for position in val_positions])
+    write(f"{output_prefix}_train.traj", [
+          selected_frames[position] for position in train_positions])
+    write(f"{output_prefix}_val.traj", [
+          selected_frames[position] for position in val_positions])
     with open(f"{output_prefix}_provenance.csv", "w") as output_file:
         pd.DataFrame(provenance_records).to_csv(output_file, index=False)
         output_file.flush()
         os.fsync(output_file.fileno())
-    print(f"selected {len(selected_frames)} frames: train {len(train_positions)}, val {len(val_positions)}", flush=True)
+    print(
+        f"selected {len(selected_frames)} frames: train {len(train_positions)}, val {len(val_positions)}", flush=True)
     outputs = [f"{output_prefix}_train.traj", f"{output_prefix}_val.traj"]
     write_json(os.path.join(output_dir, "outputs.json"), outputs)
     return outputs
 
 
 if __name__ == "__main__":
-    settings, inputs = standalone_settings(sys.argv[1], "select_frames", sys.argv[2:])
+    settings, inputs = standalone_settings(
+        sys.argv[1], "select_frames", sys.argv[2:])
     run(settings, ".", inputs, mace_mp(**mace_mp_kwargs(settings)))

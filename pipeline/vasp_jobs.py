@@ -34,13 +34,15 @@ KNOWN_INCAR_TAGS = {tag.upper() for tag_list in (create_input.float_keys, create
 def nested_setting_problems(vasp_settings):
     """Problems inside the incar and kpoints tables: INCAR tags not in KNOWN_INCAR_TAGS, kpoints not {mesh, gamma}."""
     problems = []
-    unknown_incar_tags = {tag.upper() for tag in vasp_settings.get("incar", {})} - KNOWN_INCAR_TAGS
+    unknown_incar_tags = {tag.upper() for tag in vasp_settings.get(
+        "incar", {})} - KNOWN_INCAR_TAGS
     if unknown_incar_tags:
         problems.append(f"INCAR tags {sorted(unknown_incar_tags)} are not known VASP tags "
                         f"(checked against ASE's lists in ase/calculators/vasp/create_input.py)")
     explicit_kpoints = vasp_settings.get("kpoints")
     if explicit_kpoints is not None and set(explicit_kpoints) != {"mesh", "gamma"}:
-        problems.append(f"kpoints must have exactly the keys ['gamma', 'mesh'], got {sorted(explicit_kpoints)}")
+        problems.append(
+            f"kpoints must have exactly the keys ['gamma', 'mesh'], got {sorted(explicit_kpoints)}")
     return problems
 
 
@@ -66,13 +68,16 @@ def prepare_incar(vasp_settings):
 
     Raises if both an explicit kpoints mesh and KSPACING are set.
     """
-    incar_tags = {tag.upper(): value for tag, value in vasp_settings["incar"].items()}
+    incar_tags = {tag.upper(): value for tag,
+                  value in vasp_settings["incar"].items()}
     if "NCORE" not in incar_tags:
         incar_tags["NCORE"] = ncore_for(vasp_settings["ntasks"])
     if vasp_settings["ntasks"] % 4:
-        print(f"{vasp_settings['name']}: ntasks {vasp_settings['ntasks']} is not divisible by 4; NCORE = {incar_tags['NCORE']}", flush=True)
+        print(
+            f"{vasp_settings['name']}: ntasks {vasp_settings['ntasks']} is not divisible by 4; NCORE = {incar_tags['NCORE']}", flush=True)
     if vasp_settings["kpoints"] is not None and "KSPACING" in incar_tags:
-        raise ValueError("both 'kpoints' and INCAR KSPACING given; VASP ignores KSPACING when a KPOINTS file is present")
+        raise ValueError(
+            "both 'kpoints' and INCAR KSPACING given; VASP ignores KSPACING when a KPOINTS file is present")
     return incar_tags
 
 
@@ -88,7 +93,8 @@ def kpoint_mesh(atoms, incar_tags, explicit_kpoints):
     gamma_centred = incar_tags.get("KGAMMA", True)
     # a string such as "F" would be truthy and select the Γ-only executable
     if not isinstance(gamma_centred, bool):
-        raise TypeError(f"KGAMMA must be a TOML boolean, got {gamma_centred!r}")
+        raise TypeError(
+            f"KGAMMA must be a TOML boolean, got {gamma_centred!r}")
     kspacing = incar_tags.get("KSPACING", 0.5)
     # ASE's reciprocal cell has no 2π factor
     return [max(1, math.ceil(np.linalg.norm(reciprocal_vector) * 2 * math.pi / kspacing))
@@ -111,7 +117,8 @@ def vasp_job_script(vasp_settings, job_name, vasp_executable, files_copied_to_sc
         "#SBATCH --output=vasp_%j.out",
         "#SBATCH --error=vasp_%j.err",
     ]
-    job_script_lines += [f"#SBATCH {extra_sbatch_line}" for extra_sbatch_line in vasp_settings["sbatch_args"]]
+    job_script_lines += [
+        f"#SBATCH {extra_sbatch_line}" for extra_sbatch_line in vasp_settings["sbatch_args"]]
     job_script_lines.append("set -euo pipefail")
     job_script_lines += vasp_settings["job_setup"]
     # run in node-local scratch; rsync back periodically and on exit, also on failure
@@ -146,7 +153,8 @@ def vasp_job_script(vasp_settings, job_name, vasp_executable, files_copied_to_sc
             'the original is start.poscar" > "failure_${SLURM_JOB_ID}.txt"',
         ]
     else:
-        job_script_lines.append('    echo "SCF not converged within NELM" > "failure_${SLURM_JOB_ID}.txt"')
+        job_script_lines.append(
+            '    echo "SCF not converged within NELM" > "failure_${SLURM_JOB_ID}.txt"')
     job_script_lines += [
         '    sync "failure_${SLURM_JOB_ID}.txt"',
         '    cat "failure_${SLURM_JOB_ID}.txt" >&2',
@@ -168,24 +176,31 @@ def write_frame_inputs(vasp_settings, incar_tags, frame_dir, atoms, job_name, su
     """
     # POSCAR species blocks and POTCAR order both come from this Z-sorted order, so they always match
     atoms = sort(atoms, tags=atoms.numbers)
-    species_in_poscar_order = [element for element, _ in groupby(atoms.get_chemical_symbols())]
-    species_without_potcar = set(species_in_poscar_order) - set(vasp_settings["potcars"])
+    species_in_poscar_order = [element for element,
+                               _ in groupby(atoms.get_chemical_symbols())]
+    species_without_potcar = set(
+        species_in_poscar_order) - set(vasp_settings["potcars"])
     if species_without_potcar:
-        raise KeyError(f"no POTCAR mapping for {sorted(species_without_potcar)} in 'potcars'")
+        raise KeyError(
+            f"no POTCAR mapping for {sorted(species_without_potcar)} in 'potcars'")
     os.makedirs(frame_dir, exist_ok=True)
     write(os.path.join(frame_dir, "POSCAR"), atoms, format="vasp", direct=True)
-    write_text(os.path.join(frame_dir, "INCAR"), "".join(f"{tag} = {format_incar_value(value)}\n" for tag, value in incar_tags.items()))
+    write_text(os.path.join(frame_dir, "INCAR"), "".join(
+        f"{tag} = {format_incar_value(value)}\n" for tag, value in incar_tags.items()))
     potcar_text = ""
     for element in species_in_poscar_order:
-        potcar_text += Path(vasp_settings["potcar_dir"], vasp_settings["potcars"][element], "POTCAR").read_text().strip() + "\n"
+        potcar_text += Path(vasp_settings["potcar_dir"], vasp_settings["potcars"]
+                            [element], "POTCAR").read_text().strip() + "\n"
     write_text(os.path.join(frame_dir, "POTCAR"), potcar_text)
-    kpoint_mesh_size, gamma_centred = kpoint_mesh(atoms, incar_tags, vasp_settings["kpoints"])
+    kpoint_mesh_size, gamma_centred = kpoint_mesh(
+        atoms, incar_tags, vasp_settings["kpoints"])
     files_copied_to_scratch = ["INCAR", "POSCAR", "POTCAR"]
     if vasp_settings["kpoints"] is not None:
         write_text(os.path.join(frame_dir, "KPOINTS"),
                    f"Automatic mesh\n0\n{'Gamma' if gamma_centred else 'Monkhorst-Pack'}\n{' '.join(map(str, kpoint_mesh_size))}\n0 0 0\n")
         files_copied_to_scratch.append("KPOINTS")
-    vasp_executable = vasp_settings["gamma_executable"] if kpoint_mesh_size == [1, 1, 1] and gamma_centred else vasp_settings["std_executable"]
+    vasp_executable = vasp_settings["gamma_executable"] if kpoint_mesh_size == [
+        1, 1, 1] and gamma_centred else vasp_settings["std_executable"]
     # job.sh is written last, so its presence means the frame inputs are complete
     write_text(os.path.join(frame_dir, "job.sh"),
                vasp_job_script(vasp_settings, job_name, vasp_executable, files_copied_to_scratch, success_marker, continue_from_contcar))
@@ -198,7 +213,8 @@ def run_vasp_frames(vasp_settings, output_dir, frames_to_run, success_marker, co
     Returns (frame directories in the order of frames_to_run, {frame_dir: job ID}, {failed frame_dir: SLURM state}).
     """
     site_config = load_site_config()
-    vasp_settings = {**vasp_settings, **site_config["vasp"], "job_setup": site_config["job_setup"]}
+    vasp_settings = {**vasp_settings, **
+                     site_config["vasp"], "job_setup": site_config["job_setup"]}
     incar_tags = prepare_incar(vasp_settings)
     frame_dirs = []
     for split, frame_index, atoms in frames_to_run:
@@ -207,8 +223,10 @@ def run_vasp_frames(vasp_settings, output_dir, frames_to_run, success_marker, co
             write_frame_inputs(vasp_settings, incar_tags, frame_dir, atoms, f"{vasp_settings['name']}_{split}_{frame_index}",
                                success_marker, continue_from_contcar)
         frame_dirs.append(frame_dir)
-    print(f"{vasp_settings['name']}: {len(frame_dirs)} frames prepared in {output_dir}", flush=True)
-    job_id_by_dir, failed_state_by_dir = slurm_jobs.submit_and_wait_for_jobs(vasp_settings["name"], frame_dirs, vasp_settings["poll_interval_s"])
+    print(
+        f"{vasp_settings['name']}: {len(frame_dirs)} frames prepared in {output_dir}", flush=True)
+    job_id_by_dir, failed_state_by_dir = slurm_jobs.submit_and_wait_for_jobs(
+        vasp_settings["name"], frame_dirs, vasp_settings["poll_interval_s"])
     return frame_dirs, job_id_by_dir, failed_state_by_dir
 
 

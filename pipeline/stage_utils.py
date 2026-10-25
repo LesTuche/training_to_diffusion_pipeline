@@ -11,7 +11,8 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 
-MACE_MP_KWARG_KEYS = ("model", "device", "default_dtype", "head", "dispersion", "damping", "dispersion_xc")
+MACE_MP_KWARG_KEYS = ("model", "device", "default_dtype",
+                      "head", "dispersion", "damping", "dispersion_xc")
 SITE_CONFIG_PATH = Path(__file__).resolve().parent.parent / "site_config.toml"
 # keys every stage accepts in addition to its own REQUIRED and DEFAULTS
 GENERAL_SETTING_KEYS = {"name", "slurm"}
@@ -99,7 +100,8 @@ def merge_stage_settings(pipeline_config, stage_config):
     """Settings of one [[stage]]: its presets deep-merged in order, then the stage's own keys on top, without "presets"."""
     merged_settings = {}
     for preset_name in stage_config.get("presets", []):
-        merged_settings = deep_merge(merged_settings, pipeline_config["preset"][preset_name])
+        merged_settings = deep_merge(
+            merged_settings, pipeline_config["preset"][preset_name])
     return deep_merge(merged_settings, {key: value for key, value in stage_config.items() if key != "presets"})
 
 
@@ -109,9 +111,11 @@ def standalone_settings(config_path, module_name, command_line_inputs):
     The inputs are command_line_inputs, or the stage's inputs if none are given on the command line.
     """
     pipeline_config = tomllib.loads(Path(config_path).read_text())
-    stage_configs = [stage_config for stage_config in pipeline_config["stage"] if stage_config["module"] == module_name]
+    stage_configs = [stage_config for stage_config in pipeline_config["stage"]
+                     if stage_config["module"] == module_name]
     if len(stage_configs) != 1:
-        raise ValueError(f"{config_path}: a standalone {module_name} run needs exactly one [[stage]] of it, found {len(stage_configs)}")
+        raise ValueError(
+            f"{config_path}: a standalone {module_name} run needs exactly one [[stage]] of it, found {len(stage_configs)}")
     settings = merge_stage_settings(pipeline_config, stage_configs[0])
     settings.pop("module")
     stage_inputs = settings.pop("inputs", [])
@@ -121,7 +125,8 @@ def standalone_settings(config_path, module_name, command_line_inputs):
 def load_site_config():
     """Machine-specific settings from site_config.toml in the repository root; raises if the file does not exist."""
     if not SITE_CONFIG_PATH.exists():
-        raise FileNotFoundError(f"{SITE_CONFIG_PATH} not found; copy site_config.template.toml to site_config.toml and adapt it")
+        raise FileNotFoundError(
+            f"{SITE_CONFIG_PATH} not found; copy site_config.template.toml to site_config.toml and adapt it")
     return tomllib.loads(SITE_CONFIG_PATH.read_text())
 
 
@@ -132,7 +137,8 @@ def mace_mp_kwargs(settings):
 
 def setting_problems(stage_module, settings):
     """List of problems with a stage's settings: unknown keys, missing required keys and the module's nested checks; empty if valid."""
-    allowed_keys = set(stage_module.REQUIRED) | set(stage_module.DEFAULTS) | GENERAL_SETTING_KEYS
+    allowed_keys = set(stage_module.REQUIRED) | set(
+        stage_module.DEFAULTS) | GENERAL_SETTING_KEYS
     if stage_module.USES_MACE_CALCULATOR:
         allowed_keys |= set(MACE_MP_KWARG_KEYS)
     problems = []
@@ -157,7 +163,8 @@ def write_merged_settings(stage_module, settings, output_dir, inputs):
         raise ValueError(f"{settings['name']}: " + "; ".join(problems))
     merged_settings = {**stage_module.DEFAULTS, **settings}
     output_prefix = os.path.join(output_dir, merged_settings["name"])
-    write_json(f"{output_prefix}_settings.json", {**merged_settings, "inputs": inputs})
+    write_json(f"{output_prefix}_settings.json", {
+               **merged_settings, "inputs": inputs})
     return merged_settings, output_prefix
 
 
@@ -166,9 +173,11 @@ def one_item_per_input(settings, inputs):
 
     Returns [(label, item settings, [input path])]; raises if two inputs give the same label.
     """
-    item_labels = [os.path.splitext(os.path.basename(input_path))[0] for input_path in inputs]
+    item_labels = [os.path.splitext(os.path.basename(input_path))[
+        0] for input_path in inputs]
     if len(set(item_labels)) != len(item_labels):
-        raise ValueError(f"inputs {inputs} give non-unique labels {item_labels}")
+        raise ValueError(
+            f"inputs {inputs} give non-unique labels {item_labels}")
     return [(item_label, {**settings, "name": item_label}, [input_path]) for item_label, input_path in zip(item_labels, inputs)]
 
 
@@ -181,5 +190,6 @@ def unique_split_names(split_files):
     """Split name of each file, in input order; raises if two files give the same split name."""
     split_names = [split_name(split_file) for split_file in split_files]
     if len(set(split_names)) != len(split_names):
-        raise ValueError(f"frame files {split_files} give non-unique split names {split_names}")
+        raise ValueError(
+            f"frame files {split_files} give non-unique split names {split_names}")
     return split_names

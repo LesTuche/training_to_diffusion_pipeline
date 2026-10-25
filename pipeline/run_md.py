@@ -14,7 +14,8 @@ from pipeline.mlip_dynamics import run_bussi_md
 from pipeline.stage_utils import (mace_mp_kwargs, one_item_per_input, standalone_settings, write_json,
                                   write_merged_settings)
 
-REQUIRED = ("temperature_K", "timestep_fs", "taut_fs", "nsteps", "write_interval_fs", "log_interval_fs")
+REQUIRED = ("temperature_K", "timestep_fs", "taut_fs",
+            "nsteps", "write_interval_fs", "log_interval_fs")
 USES_MACE_CALCULATOR = True
 DEFAULTS = {
     "start_structure_format": None,
@@ -47,7 +48,8 @@ def plumed_input_lines(template_path, atoms):
 
     def indices_of_element(placeholder_match):
         # PLUMED numbers atoms from 1, ASE from 0
-        one_based_indices = [str(atom_index + 1) for atom_index, symbol in enumerate(symbols) if symbol == placeholder_match.group(1)]
+        one_based_indices = [str(atom_index + 1) for atom_index, symbol in enumerate(
+            symbols) if symbol == placeholder_match.group(1)]
         if not one_based_indices:
             raise ValueError(f"{template_path}: placeholder {placeholder_match.group(0)} but no {placeholder_match.group(1)} "
                              f"in {atoms.get_chemical_formula()}")
@@ -74,31 +76,40 @@ def run(settings, output_dir, inputs, mace_calculator):
     Returns [<output_dir>/<name>.traj].
     """
     if len(inputs) != 1:
-        raise ValueError(f"run_md needs exactly one start structure, got {inputs}")
-    merged_settings, output_prefix = write_merged_settings(sys.modules[__name__], settings, output_dir, inputs)
+        raise ValueError(
+            f"run_md needs exactly one start structure, got {inputs}")
+    merged_settings, output_prefix = write_merged_settings(
+        sys.modules[__name__], settings, output_dir, inputs)
 
-    start_atoms = read(inputs[0], format=merged_settings["start_structure_format"])
-    print(f"md: start {inputs[0]} ({len(start_atoms)} atoms, {start_atoms.get_chemical_formula()}), seed {merged_settings['seed']}", flush=True)
-    print(f"md: calculator {mace_mp_kwargs(merged_settings)}, plumed {merged_settings['plumed']}", flush=True)
+    start_atoms = read(
+        inputs[0], format=merged_settings["start_structure_format"])
+    print(
+        f"md: start {inputs[0]} ({len(start_atoms)} atoms, {start_atoms.get_chemical_formula()}), seed {merged_settings['seed']}", flush=True)
+    print(
+        f"md: calculator {mace_mp_kwargs(merged_settings)}, plumed {merged_settings['plumed']}", flush=True)
     # output_prefix is made absolute because the PLUMED branch changes the working directory
     bussi_kwargs = dict(temperature_K=merged_settings["temperature_K"], timestep_fs=merged_settings["timestep_fs"],
                         taut_fs=merged_settings["taut_fs"], nsteps=merged_settings["nsteps"],
-                        write_interval_fs=merged_settings["write_interval_fs"], log_interval_fs=merged_settings["log_interval_fs"],
+                        write_interval_fs=merged_settings[
+                            "write_interval_fs"], log_interval_fs=merged_settings["log_interval_fs"],
                         remove_rigid_body_interval_fs=merged_settings["remove_rigid_body_interval_fs"],
-                        random_number_generator=np.random.default_rng(merged_settings["seed"]),
+                        random_number_generator=np.random.default_rng(
+                            merged_settings["seed"]),
                         output_prefix=os.path.abspath(output_prefix), progress_label=merged_settings["name"])
 
     if merged_settings["plumed"] is None:
         run_bussi_md(start_atoms, mace_calculator, **bussi_kwargs)
     else:
-        plumed_lines = plumed_input_lines(merged_settings["plumed"], start_atoms)
+        plumed_lines = plumed_input_lines(
+            merged_settings["plumed"], start_atoms)
         plumed_timestep = merged_settings["timestep_fs"] * units.fs
         plumed_kt_ev = merged_settings["temperature_K"] * units.kB
         # PLUMED writes into the working directory; leaving the with block finalizes PLUMED
         with contextlib.chdir(output_dir), ScalarEnergyPlumed(calc=mace_calculator, input=plumed_lines, timestep=plumed_timestep,
                                                               atoms=start_atoms, kT=plumed_kt_ev) as plumed_biased_calculator:
             run_bussi_md(start_atoms, plumed_biased_calculator, **bussi_kwargs)
-    print(f"md: wrote {output_prefix}.traj, {output_prefix}.log, {output_prefix}_settings.json", flush=True)
+    print(
+        f"md: wrote {output_prefix}.traj, {output_prefix}.log, {output_prefix}_settings.json", flush=True)
     outputs = [f"{output_prefix}.traj"]
     write_json(os.path.join(output_dir, "outputs.json"), outputs)
     return outputs

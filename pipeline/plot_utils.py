@@ -32,16 +32,19 @@ def to_latex(text):
 def parse_composition(system):
     """Element counts from a system name such as pt18ga18c5, in name order: {"Pt": 18, "Ga": 18, "C": 5}."""
     element_counts = re.findall(r"([a-z]+)(\d+)", system)
-    composition = {element.capitalize(): int(count) for element, count in element_counts}
+    composition = {element.capitalize(): int(count)
+                   for element, count in element_counts}
     if "".join(element + count for element, count in element_counts) != system or not set(composition) <= set(chemical_symbols):
-        raise ValueError(f"system name {system!r} does not spell out a composition such as pt36c10 or pt18ga18c5")
+        raise ValueError(
+            f"system name {system!r} does not spell out a composition such as pt36c10 or pt18ga18c5")
     return composition
 
 
 def display_label(category):
     """LaTeX label of a system or regime category, e.g. pt36c1_surface to Pt$_{36}$C$_{1}$ (Surface)."""
     system, _, regime = category.partition("_")
-    formula = "".join(f"{element}{count}" for element, count in parse_composition(system).items())
+    formula = "".join(f"{element}{count}" for element,
+                      count in parse_composition(system).items())
     return to_latex(formula) + (f" ({regime.capitalize()})" if regime else "")
 
 
@@ -64,14 +67,16 @@ def c_metal_ratio(system):
 
 def c_metal_label(system):
     """Axis label of c_metal_ratio, e.g. "C / Pt" or "C / (Pt+Ga)"."""
-    metals = [element for element in parse_composition(system) if element != "C"]
+    metals = [element for element in parse_composition(
+        system) if element != "C"]
     return "C / " + (metals[0] if len(metals) == 1 else f"({'+'.join(metals)})")
 
 
 def system_sort_key(system):
     """Sorts Pt before PtGa systems, then by metal counts, then by C count."""
     composition = parse_composition(system)
-    metal_counts = [count for element, count in composition.items() if element != "C"]
+    metal_counts = [count for element,
+                    count in composition.items() if element != "C"]
     return len(metal_counts), metal_counts, composition.get("C", 0)
 
 

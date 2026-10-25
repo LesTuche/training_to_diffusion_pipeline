@@ -10,17 +10,21 @@ ACTIVE_STATES = {"PENDING", "RUNNING", "REQUEUED", "RESIZING", "SUSPENDED"}
 
 def submit_job(job_dir):
     """Submit job_dir/job.sh with sbatch from inside job_dir and write the job ID to job_dir/job_id."""
-    sbatch_result = subprocess.run(["sbatch", "--parsable", "job.sh"], cwd=job_dir, capture_output=True, text=True)
+    sbatch_result = subprocess.run(
+        ["sbatch", "--parsable", "job.sh"], cwd=job_dir, capture_output=True, text=True)
     if sbatch_result.returncode != 0:
-        raise RuntimeError(f"sbatch failed in {job_dir}: {sbatch_result.stderr.strip()}")
+        raise RuntimeError(
+            f"sbatch failed in {job_dir}: {sbatch_result.stderr.strip()}")
     # --parsable prints "<id>" or "<id>;<cluster>" on multi-cluster setups
-    write_text(os.path.join(job_dir, "job_id"), sbatch_result.stdout.strip().split(";")[0] + "\n")
+    write_text(os.path.join(job_dir, "job_id"),
+               sbatch_result.stdout.strip().split(";")[0] + "\n")
 
 
 def query_job_states(job_ids):
     """{job ID: SLURM state} from sacct; a job that sacct does not know yet is missing."""
     # with -j, sacct searches from Unix epoch 0 instead of only jobs since midnight
-    sacct_result = subprocess.run(["sacct", "-X", "-n", "-P", "-o", "JobID,State", "-j", ",".join(job_ids)], capture_output=True, text=True)
+    sacct_result = subprocess.run(["sacct", "-X", "-n", "-P", "-o", "JobID,State",
+                                  "-j", ",".join(job_ids)], capture_output=True, text=True)
     if sacct_result.returncode != 0:
         raise RuntimeError(f"sacct failed: {sacct_result.stderr.strip()}")
     state_by_job_id = {}
@@ -42,7 +46,8 @@ def submit_and_wait_for_jobs(stage_name, job_dirs, poll_interval_s):
     while True:
         job_id_by_dir = {job_dir: (Path(job_dir) / "job_id").read_text().strip() for job_dir in job_dirs
                          if os.path.exists(os.path.join(job_dir, "job_id"))}
-        state_by_job_id = query_job_states(list(job_id_by_dir.values())) if job_id_by_dir else {}
+        state_by_job_id = query_job_states(
+            list(job_id_by_dir.values())) if job_id_by_dir else {}
         done_dirs, active_dirs, failed_state_by_dir, dirs_to_submit = [], [], {}, []
         for job_dir in job_dirs:
             if os.path.exists(os.path.join(job_dir, "outputs.json")):

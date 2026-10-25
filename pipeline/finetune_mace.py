@@ -31,24 +31,32 @@ def run(settings, output_dir, inputs, mace_calculator):
     inputs: exactly one *_train and one *_val extxyz file. mace_args must contain "name"; train_file, valid_file and device
     are set here. Returns [<output_dir>/<mace_args.name>.model].
     """
-    merged_settings, _ = write_merged_settings(sys.modules[__name__], settings, output_dir, inputs)
+    merged_settings, _ = write_merged_settings(
+        sys.modules[__name__], settings, output_dir, inputs)
 
-    reserved_keys_given = RESERVED_MACE_ARGS & set(merged_settings["mace_args"])
+    reserved_keys_given = RESERVED_MACE_ARGS & set(
+        merged_settings["mace_args"])
     if reserved_keys_given:
-        raise ValueError(f"mace_args {sorted(reserved_keys_given)} are set by the stage; use inputs and device")
+        raise ValueError(
+            f"mace_args {sorted(reserved_keys_given)} are set by the stage; use inputs and device")
 
     split_names = unique_split_names(inputs)
     if sorted(split_names) != ["train", "val"]:
-        raise ValueError(f"inputs {inputs} must be exactly one _train and one _val file")
-    train_file, valid_file = (os.path.abspath(inputs[split_names.index(split)]) for split in ("train", "val"))
-    print(f"{merged_settings['name']}: train {train_file}, valid {valid_file}", flush=True)
+        raise ValueError(
+            f"inputs {inputs} must be exactly one _train and one _val file")
+    train_file, valid_file = (os.path.abspath(
+        inputs[split_names.index(split)]) for split in ("train", "val"))
+    print(
+        f"{merged_settings['name']}: train {train_file}, valid {valid_file}", flush=True)
 
     run_train_command = [sys.executable, "-m", "mace.cli.run_train", "--train_file", train_file, "--valid_file", valid_file,
                          "--device", merged_settings["device"], *mace_command_line_flags(merged_settings["mace_args"])]
-    print(f"{merged_settings['name']}: {' '.join(run_train_command)}", flush=True)
+    print(
+        f"{merged_settings['name']}: {' '.join(run_train_command)}", flush=True)
     subprocess.run(run_train_command, cwd=output_dir, check=True)
 
-    model_path = os.path.join(output_dir, f"{merged_settings['mace_args']['name']}.model")
+    model_path = os.path.join(
+        output_dir, f"{merged_settings['mace_args']['name']}.model")
     if not os.path.exists(model_path):
         raise RuntimeError(f"run_train finished without {model_path}")
     outputs = [model_path]
@@ -57,5 +65,6 @@ def run(settings, output_dir, inputs, mace_calculator):
 
 
 if __name__ == "__main__":
-    settings, inputs = standalone_settings(sys.argv[1], "finetune_mace", sys.argv[2:])
+    settings, inputs = standalone_settings(
+        sys.argv[1], "finetune_mace", sys.argv[2:])
     run(settings, ".", inputs, None)

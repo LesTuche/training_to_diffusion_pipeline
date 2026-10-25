@@ -41,26 +41,30 @@ def build_dispersed_cluster(symbols, radius, c_c_separation, cov_scale, max_atte
             for placed_symbol in symbols[:atom_index]
         ])
         for _ in range(max_attempts):
-            radial_uniform, polar_uniform, azimuthal_uniform = random_number_generator.random(3)
+            radial_uniform, polar_uniform, azimuthal_uniform = random_number_generator.random(
+                3)
             # the cube root gives a uniform density in volume, arccos(2v - 1) a uniform density on the sphere
             radial_distance = radius * radial_uniform ** (1.0 / 3.0)
             polar_angle = np.arccos(2.0 * polar_uniform - 1.0)
             azimuthal_angle = 2.0 * np.pi * azimuthal_uniform
             candidate_position = radial_distance * np.array([np.sin(polar_angle) * np.cos(azimuthal_angle),
-                                                             np.sin(polar_angle) * np.sin(azimuthal_angle),
+                                                             np.sin(
+                                                                 polar_angle) * np.sin(azimuthal_angle),
                                                              np.cos(polar_angle)])
             if atom_index == 0 or np.all(np.linalg.norm(np.array(placed_positions) - candidate_position, axis=1)
                                          >= minimum_distances_to_placed_atoms):
                 placed_positions.append(candidate_position)
                 break
         else:
-            raise RuntimeError(f"Failed to place {symbol} after {max_attempts} attempts; increase radius or decrease c_c_separation")
+            raise RuntimeError(
+                f"Failed to place {symbol} after {max_attempts} attempts; increase radius or decrease c_c_separation")
     return Atoms(symbols, placed_positions)
 
 
 def items(settings, inputs):
     """Fan-out hook: one item per entry of settings["clusters"]; the entry's keys override the stage settings. inputs is ignored."""
-    settings_without_clusters = {key: value for key, value in settings.items() if key != "clusters"}
+    settings_without_clusters = {key: value for key,
+                                 value in settings.items() if key != "clusters"}
     return [(cluster_label, {**settings_without_clusters, **cluster_overrides, "name": cluster_label}, [])
             for cluster_label, cluster_overrides in settings["clusters"].items()]
 
@@ -70,14 +74,16 @@ def run(settings, output_dir, inputs, mace_calculator):
 
     Returns [<output_dir>/<name>.traj], the equilibrated cluster centred with "vacuum" Å on each side.
     """
-    merged_settings, output_prefix = write_merged_settings(sys.modules[__name__], settings, output_dir, inputs)
+    merged_settings, output_prefix = write_merged_settings(
+        sys.modules[__name__], settings, output_dir, inputs)
 
     print(f"cluster: composition {merged_settings['composition']}, radius {merged_settings['radius']} A, "
           f"seed {merged_settings['seed']}", flush=True)
     print(f"cluster: calculator {mace_mp_kwargs(merged_settings)}", flush=True)
 
     random_number_generator = np.random.default_rng(merged_settings["seed"])
-    shuffled_symbols = [element for element, count in merged_settings["composition"].items() for _ in range(count)]
+    shuffled_symbols = [element for element,
+                        count in merged_settings["composition"].items() for _ in range(count)]
     random_number_generator.shuffle(shuffled_symbols)
 
     cluster = build_dispersed_cluster(shuffled_symbols, merged_settings["radius"], merged_settings["c_c_separation"],
@@ -109,5 +115,6 @@ def run(settings, output_dir, inputs, mace_calculator):
 
 
 if __name__ == "__main__":
-    settings, inputs = standalone_settings(sys.argv[1], "generate_cluster", sys.argv[2:])
+    settings, inputs = standalone_settings(
+        sys.argv[1], "generate_cluster", sys.argv[2:])
     run(settings, ".", inputs, mace_mp(**mace_mp_kwargs(settings)))

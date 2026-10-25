@@ -30,7 +30,8 @@ def compute_coordination(trajectory_path, first_frame_index, stride, cutoff_fact
     """
     trajectory = Trajectory(trajectory_path)
     if first_frame_index >= len(trajectory):
-        raise ValueError(f"equilibration cut at frame {first_frame_index} but {trajectory_path} has {len(trajectory)} frames")
+        raise ValueError(
+            f"equilibration cut at frame {first_frame_index} but {trajectory_path} has {len(trajectory)} frames")
     frame_indices = range(first_frame_index, len(trajectory), stride)
     first_frame = trajectory[first_frame_index]
     symbols = np.array(first_frame.get_chemical_symbols())
@@ -44,12 +45,15 @@ def compute_coordination(trajectory_path, first_frame_index, stride, cutoff_fact
 
     neighbor_counts = {(neighbor_element, center_element): np.zeros((len(frame_indices), element_masks[center_element].sum()), dtype=int)
                        for neighbor_element in elements for center_element in elements}
-    distances_to_com = {element: np.zeros((len(frame_indices), element_masks[element].sum())) for element in elements}
-    pair_distances = {(first_element, second_element): [] for first_element, second_element in metal_pairs}
+    distances_to_com = {element: np.zeros(
+        (len(frame_indices), element_masks[element].sum())) for element in elements}
+    pair_distances = {(first_element, second_element): []
+                      for first_element, second_element in metal_pairs}
     for row_index, frame_index in enumerate(tqdm(frame_indices, desc="coordination")):
         frame = trajectory[frame_index]
         if frame.get_chemical_symbols() != symbols.tolist():
-            raise ValueError(f"{trajectory_path}: atoms or their order changed at frame {frame_index}")
+            raise ValueError(
+                f"{trajectory_path}: atoms or their order changed at frame {frame_index}")
         all_distances = frame.get_all_distances(mic=True)
         connectivity = all_distances < pair_cutoffs
         np.fill_diagonal(connectivity, False)
@@ -57,14 +61,17 @@ def compute_coordination(trajectory_path, first_frame_index, stride, cutoff_fact
             neighbor_counts[neighbor_element, center_element][row_index] = (
                 connectivity[np.ix_(element_masks[center_element], element_masks[neighbor_element])].sum(axis=1))
         positions = frame.get_positions()
-        distances = np.linalg.norm(positions - masses @ positions / masses.sum(), axis=1)
+        distances = np.linalg.norm(
+            positions - masses @ positions / masses.sum(), axis=1)
         for element in elements:
             distances_to_com[element][row_index] = distances[element_masks[element]]
         for first_element, second_element in metal_pairs:
-            block = all_distances[np.ix_(element_masks[first_element], element_masks[second_element])]
+            block = all_distances[np.ix_(
+                element_masks[first_element], element_masks[second_element])]
             if first_element == second_element:
                 block = block[np.triu_indices(len(block), 1)]
-            pair_distances[first_element, second_element].append(block.reshape(-1).astype(np.float32))
+            pair_distances[first_element, second_element].append(
+                block.reshape(-1).astype(np.float32))
     trajectory.close()
 
     result = {
@@ -80,18 +87,21 @@ def compute_coordination(trajectory_path, first_frame_index, stride, cutoff_fact
         "frame_interval_fs": np.array(stride * write_interval_fs),
     }
     for (first_element, second_element), frame_distances in pair_distances.items():
-        result[f"distances_{first_element}_{second_element}"] = np.array(frame_distances)
+        result[f"distances_{first_element}_{second_element}"] = np.array(
+            frame_distances)
     for element in elements:
         result[f"mask_{element}"] = element_masks[element]
         result[f"indices_{element}"] = np.flatnonzero(element_masks[element])
         result[f"n_{element}"] = np.array(element_masks[element].sum())
         result[f"dist_to_com_{element}"] = distances_to_com[element]
-        result[f"dist_to_com_{element}_raw"] = distances_to_com[element].reshape(-1)
+        result[f"dist_to_com_{element}_raw"] = distances_to_com[element].reshape(
+            -1)
     for (neighbor_element, center_element), counts in neighbor_counts.items():
         pair_tag = f"{neighbor_element}_{center_element}"
         result[f"cn_{pair_tag}"] = counts.mean(axis=1)
         result[f"counts_{neighbor_element}_around_{center_element}"] = counts
-        result[f"counts_{neighbor_element}_around_{center_element}_raw"] = counts.reshape(-1)
+        result[f"counts_{neighbor_element}_around_{center_element}_raw"] = counts.reshape(
+            -1)
         histogram_counts = np.bincount(counts.reshape(-1))
         histogram_probabilities = histogram_counts / histogram_counts.sum()
         occupied = histogram_counts > 0
@@ -112,23 +122,29 @@ def run(settings, output_dir, inputs, mace_calculator):
     Returns [<cache_dir>/coordination_<key>.npz].
     """
     if len(inputs) != 1:
-        raise ValueError(f"analyze_coordination needs exactly one trajectory, got {inputs}")
-    merged_settings, _ = write_merged_settings(sys.modules[__name__], settings, output_dir, inputs)
+        raise ValueError(
+            f"analyze_coordination needs exactly one trajectory, got {inputs}")
+    merged_settings, _ = write_merged_settings(
+        sys.modules[__name__], settings, output_dir, inputs)
     trajectory_path = os.path.abspath(inputs[0])
     os.makedirs(merged_settings["cache_dir"], exist_ok=True)
 
-    first_frame_index = frames_from_ps(merged_settings["equilibration_ps"], merged_settings["write_interval_fs"])
+    first_frame_index = frames_from_ps(
+        merged_settings["equilibration_ps"], merged_settings["write_interval_fs"])
     coordination_cache_key = cache_key(**trajectory_cache_fields(trajectory_path), start_idx=first_frame_index, stride=merged_settings["stride"],
                                        cutoff_factor=merged_settings["cutoff_factor"], write_interval_fs=merged_settings["write_interval_fs"])
-    cache_path = os.path.join(merged_settings["cache_dir"], f"coordination_{coordination_cache_key}.npz")
+    cache_path = os.path.join(
+        merged_settings["cache_dir"], f"coordination_{coordination_cache_key}.npz")
     load_or_compute_cached(cache_path, lambda: compute_coordination(trajectory_path, first_frame_index, merged_settings["stride"],
                                                                     merged_settings["cutoff_factor"], merged_settings["write_interval_fs"]))
-    print(f"{merged_settings['name']}: coordination of {trajectory_path} -> {cache_path}", flush=True)
+    print(
+        f"{merged_settings['name']}: coordination of {trajectory_path} -> {cache_path}", flush=True)
     outputs = [cache_path]
     write_json(os.path.join(output_dir, "outputs.json"), outputs)
     return outputs
 
 
 if __name__ == "__main__":
-    settings, inputs = standalone_settings(sys.argv[1], "analyze_coordination", sys.argv[2:])
+    settings, inputs = standalone_settings(
+        sys.argv[1], "analyze_coordination", sys.argv[2:])
     run(settings, ".", inputs, None)

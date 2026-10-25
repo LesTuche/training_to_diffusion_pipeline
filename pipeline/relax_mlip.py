@@ -23,7 +23,8 @@ def run(settings, output_dir, inputs, mace_calculator):
     Returns one <name>_<split>.traj per input: the original frames, then the relaxed copies marked info["relaxed"] = "mlip".
     Also writes <name>_relax.csv and the BFGS files in <output_dir>/<split>/.
     """
-    merged_settings, output_prefix = write_merged_settings(sys.modules[__name__], settings, output_dir, inputs)
+    merged_settings, output_prefix = write_merged_settings(
+        sys.modules[__name__], settings, output_dir, inputs)
 
     relax_rows, outputs = [], []
     for split_path, split in zip(inputs, unique_split_names(inputs)):
@@ -33,9 +34,11 @@ def run(settings, output_dir, inputs, mace_calculator):
         for frame_index, frame in enumerate(input_frames):
             frame_copy = frame.copy()
             frame_copy.calc = mace_calculator
-            initial_max_force = np.linalg.norm(frame_copy.get_forces(), axis=1).max()
+            initial_max_force = np.linalg.norm(
+                frame_copy.get_forces(), axis=1).max()
             if initial_max_force <= merged_settings["fmax"]:
-                relax_rows.append([split, frame_index, initial_max_force, "", "", ""])
+                relax_rows.append(
+                    [split, frame_index, initial_max_force, "", "", ""])
                 continue
             bfgs_converged, bfgs_steps, final_max_force = relax_with_bfgs(
                 frame_copy, mace_calculator, merged_settings["fmax"], merged_settings["opt_max_steps"],
@@ -44,17 +47,20 @@ def run(settings, output_dir, inputs, mace_calculator):
             frame_copy.calc = None
             frame_copy.info["relaxed"] = "mlip"
             relaxed_copies.append(frame_copy)
-            relax_rows.append([split, frame_index, initial_max_force, bfgs_converged, bfgs_steps, final_max_force])
+            relax_rows.append([split, frame_index, initial_max_force,
+                              bfgs_converged, bfgs_steps, final_max_force])
         write(f"{output_prefix}_{split}.traj", input_frames + relaxed_copies)
         outputs.append(f"{output_prefix}_{split}.traj")
         print(f"{merged_settings['name']}: {split} {len(input_frames)} frames + {len(relaxed_copies)} relaxed copies "
               f"-> {output_prefix}_{split}.traj", flush=True)
 
-    write_csv(f"{output_prefix}_relax.csv", ["split", "frame_index", "initial_fmax", "converged", "steps", "final_fmax"], relax_rows)
+    write_csv(f"{output_prefix}_relax.csv", [
+              "split", "frame_index", "initial_fmax", "converged", "steps", "final_fmax"], relax_rows)
     write_json(os.path.join(output_dir, "outputs.json"), outputs)
     return outputs
 
 
 if __name__ == "__main__":
-    settings, inputs = standalone_settings(sys.argv[1], "relax_mlip", sys.argv[2:])
+    settings, inputs = standalone_settings(
+        sys.argv[1], "relax_mlip", sys.argv[2:])
     run(settings, ".", inputs, mace_mp(**mace_mp_kwargs(settings)))
